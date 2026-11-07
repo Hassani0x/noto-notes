@@ -22,11 +22,17 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Select installed Xcode and compile tests
+        run: |
+          XCODE=$(python3 -c 'import glob,re; paths=glob.glob("/Applications/Xcode_*.app"); print(max(paths,key=lambda p:tuple(map(int,re.findall(r"[0-9]+",p)))))')
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+          xcodebuild build-for-testing -project NotoNotes.xcodeproj -scheme NotoNotes -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/NotoBuild" CODE_SIGNING_ALLOWED=NO
       - name: Select simulator and test
         run: |
           set -euo pipefail
           xcodebuild -version
-          xcodebuild -project NotoNotes.xcodeproj -scheme NotoNotes -showdestinations > "$RUNNER_TEMP/destinations"
+          xcodebuild -project NotoNotes.xcodeproj -scheme NotoNotes -showdestinations | tee "$RUNNER_TEMP/destinations"
           DEVICE=$(python3 - "$RUNNER_TEMP/destinations" <<'PY'
           import re, sys
           lines = [line for line in open(sys.argv[1]) if "platform:iOS Simulator" in line and "name:iPhone" in line]
@@ -37,7 +43,7 @@ jobs:
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
           node ci/fixture.mjs &
-          xcodebuild test -project NotoNotes.xcodeproj -scheme NotoNotes -destination "id=$DEVICE" -parallel-testing-enabled NO -resultBundlePath NotoTests.xcresult CODE_SIGNING_ALLOWED=NO
+          xcodebuild test-without-building -derivedDataPath "$RUNNER_TEMP/NotoBuild" -project NotoNotes.xcodeproj -scheme NotoNotes -destination "id=$DEVICE" -parallel-testing-enabled NO -resultBundlePath NotoTests.xcresult CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4
         if: always()
         with:
