@@ -15,7 +15,7 @@ def screen():
 def tap(label):
     for attempt in range(3):
         for item in screen().iter("node"):
-            if label in (item.get("text"), item.get("content-desc")):
+            if label.casefold() in ((item.get("text") or "").casefold(), (item.get("content-desc") or "").casefold()):
                 x, y, right, bottom = map(int, re.findall(r"\d+", item.get("bounds")))
                 adb("shell", "input", "tap", str((x+right)//2), str((y+bottom)//2))
                 return

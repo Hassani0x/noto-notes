@@ -131,6 +131,11 @@ public class Notebook extends Activity {
                 card.setOnClickListener(v->{folder=folder.equals(name)?"":name;list();});card.setSelected(name.equals(folder));space(shelf,8);
             }
         }
+        Button add=button(shelf,"New folder",this::newFolder);
+        android.graphics.drawable.GradientDrawable outline=Paper.shape(Paper.CANVAS,dp(18));
+        outline.setStroke(dp(1),0xffab9dac,dp(5),dp(4));
+        add.setBackground(outline);
+        add.setLayoutParams(new LinearLayout.LayoutParams(dp(112),-1));
     }
     private void list(){
         rows.removeAllViews();
@@ -198,7 +203,7 @@ public class Notebook extends Activity {
         choose(new String[]{"Note settings","Share note","Move to recently deleted"},i->{
             save();
             if(i==0){noteSettings();return;}
-            if(i==1){startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,title.getText()+"\\n\\n"+body.getText()),"Share note"));return;}
+            if(i==1){startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,title.getText()+"\n\n"+body.getText()),"Share note"));return;}
             db.execSQL("UPDATE notes SET deleted=1 WHERE id=?",new Object[]{id});library();
         });
     }
