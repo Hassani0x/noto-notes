@@ -62,10 +62,6 @@ struct Library: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                if page == .calendar {
-                    MonthGrid(day: $day, marked: Set(active.map(\.noteDate))).padding(.horizontal)
-                    Button { calendarJump = true } label: { Label(Days.label(day), systemImage: "calendar") }.accessibilityIdentifier("calendarDay")
-                }
                 if page == .notes {
                     list.searchable(text: $search, prompt: "Search notes")
                 } else { list }
@@ -111,6 +107,14 @@ struct Library: View {
         let rest = page == .notes ? rows.filter { !$0.isPinned } : rows
         let groups = Dictionary(grouping: rest, by: \.noteDate)
         return List {
+            if page == .calendar {
+                MonthGrid(day: $day, marked: Set(active.map(\.noteDate)), jump: { calendarJump = true })
+                    .listRowBackground(Color.paper)
+                    .listRowSeparator(.hidden)
+            }
+            if rows.isEmpty && page == .calendar {
+                Text("No notes for this day").foregroundStyle(.secondary).listRowBackground(Color.paper)
+            }
             if page == .notes, let dateFilter { Text("Showing \(Days.label(dateFilter))").font(.footnote) }
             if !pins.isEmpty { Section("Pinned") { ForEach(pins) { row($0) } } }
             if page == .notes && sorting != "Note date" {
@@ -128,7 +132,7 @@ struct Library: View {
                 }
             }
         }.listStyle(.plain).scrollContentBackground(.hidden)
-            .overlay { if rows.isEmpty { ContentUnavailableView(search.isEmpty ? "No notes here" : "No matching notes", systemImage: "note.text", description: Text(search.isEmpty ? "Use New note to begin writing." : "Try another word or adjust your filters.")) } }
+            .overlay { if rows.isEmpty && page != .calendar { ContentUnavailableView(search.isEmpty ? "No notes here" : "No matching notes", systemImage: "note.text", description: Text(search.isEmpty ? "Use New note to begin writing." : "Try another word or adjust your filters.")) } }
     }
     private func row(_ n: Note) -> some View {
         NavigationLink(value: n.id) {
@@ -157,43 +161,66 @@ struct Library: View {
     }
 }
 
+
 struct MonthGrid: View {
     @Binding var day: Int
     let marked: Set<Int>
+    let jump: () -> Void
+    private var calendar: Calendar { Days.calendar() }
+    private var first: Date { Days.date(day / 100 * 100 + 1) }
+    private var month: String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return formatter.string(from: first)
+    }
+    private var offsets: [Int?] {
+        let blanks = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
+        let count = calendar.range(of: .day, in: .month, for: first)!.count
+        return Array(repeating: nil, count: blanks) + (1...count).map(Optional.some)
+    }
+    private func move(_ delta: Int) {
+        guard let next = calendar.date(byAdding: .month, value: delta, to: Days.date(day)) else {return}
+        day = min(Days.key(next), Days.key())
+    }
     var body: some View {
-        CalendarWidget(day: $day, marked: marked).frame(minHeight: 300, maxHeight: 360)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button(action: jump) {
+                    HStack { Text(month).font(.headline); Image(systemName: "chevron.down").font(.caption) }
+                        .frame(minHeight: 44)
+                }.accessibilityIdentifier("calendarDay")
+                Spacer()
+                Button { move(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
+                    .accessibilityLabel("Previous month")
+                Button { move(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
+                    .accessibilityLabel("Next month").disabled(day / 100 >= Days.key() / 100)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(calendar.veryShortStandaloneWeekdaySymbols[(calendar.firstWeekday-1+i)%7])
+                        .font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                }
+                ForEach(Array(offsets.enumerated()), id: \.offset) { _, number in
+                    if let number {
+                        let key = day / 100 * 100 + number
+                        Button { day = key } label: {
+                            VStack(spacing: 2) {
+                                Text(String(number)).font(.body.monospacedDigit())
+                                    .foregroundStyle(day == key ? Color.white : Color.primary)
+                                    .padding(5)
+                                    .background { if day == key { Capsule().fill(Color(red:0.32,green:0.42,blue:0.38)) } }
+                                Circle().fill(marked.contains(key) ? Color.sage : Color.clear).frame(width: 4,height: 4)
+                            }.frame(maxWidth: .infinity, minHeight: 44)
+                        }.accessibilityLabel(Days.label(key))
+                            .accessibilityValue(marked.contains(key) ? "Contains notes" : "No notes")
+                            .accessibilityIdentifier("day-\(key)")
+                            .accessibilityAddTraits(day == key ? .isSelected : [])
+                            .disabled(key > Days.key())
+                    } else { Color.clear.frame(height: 1).accessibilityHidden(true) }
+                }
+            }
+        }.buttonStyle(.borderless)
     }
 }
-struct CalendarWidget: UIViewRepresentable {
-    @Binding var day: Int
-    let marked: Set<Int>
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeUIView(context: Context) -> UICalendarView {
-        let v = UICalendarView()
-        v.calendar = Days.calendar()
-        v.availableDateRange = DateInterval(start: Date.distantPast, end: Days.calendar().date(byAdding: .day, value: 1, to: Days.calendar().startOfDay(for: .now))!.addingTimeInterval(-1))
-        v.delegate = context.coordinator
-        v.selectionBehavior = UICalendarSelectionSingleDate(delegate: context.coordinator)
-        return v
-    }
-    func updateUIView(_ view: UICalendarView, context: Context) {
-        let previous = context.coordinator.parent.marked
-        context.coordinator.parent = self
-        let components = Days.calendar().dateComponents([.year,.month,.day], from: Days.date(day))
-        if let sel = view.selectionBehavior as? UICalendarSelectionSingleDate, sel.selectedDate?.day != components.day || sel.selectedDate?.month != components.month || sel.selectedDate?.year != components.year {
-            sel.setSelected(components, animated: false)
-        }
-        view.reloadDecorations(forDateComponents: previous.symmetricDifference(marked).map { Days.calendar().dateComponents([.year,.month,.day], from: Days.date($0)) }, animated: false)
-    }
-    final class Coordinator: NSObject, UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
-        var parent: CalendarWidget
-        init(_ parent: CalendarWidget) { self.parent = parent }
-        func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate components: DateComponents?) {
-            if let components, let d = Days.calendar().date(from: components) { parent.day = Days.key(d) }
-        }
-        func calendarView(_ view: UICalendarView, decorationFor components: DateComponents) -> UICalendarView.Decoration? {
-            guard let date = Days.calendar().date(from: components), parent.marked.contains(Days.key(date)) else { return nil }
-            return .default(color: UIColor(Color.sage), size: .small)
-        }
-    }
-}
+

@@ -74,6 +74,10 @@ final class JourneyTests: XCTestCase {
         if !shortcut.isHittable { app.swipeUp() }
         shortcut.tap()
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        formatter.dateFormat = "yyyyMMdd"
+        let selectedCell = app.buttons["day-" + formatter.string(from: expected)]
+        XCTAssertTrue(selectedCell.isHittable)
+        XCTAssertTrue(selectedCell.isSelected)
         capture("Calendar", app: app)
     }
     @MainActor func testLargeTypeDarkEditor() {
