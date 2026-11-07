@@ -78,7 +78,7 @@ public class Notebook extends Activity {
         });
     }
     private void library(){
-        handler.removeCallbacks(persist);id=null;layout();
+        writingRevision++;handler.removeCallbacks(autoReview);handler.removeCallbacks(persist);id=null;layout();
         LinearLayout top=bar();TextView brand=text(trash?"Recently deleted":"Noto Notes",30,true);
         top.addView(brand,flex());Button more=button(top,trash?"Back":"More",()->{
             if(trash){trash=false;library();return;}
@@ -175,7 +175,7 @@ public class Notebook extends Activity {
         dialog.getDatePicker().setMaxDate(System.currentTimeMillis());dialog.show();
     }
     private void edit(String key){
-        try(Cursor c=db.rawQuery("SELECT title,body,day,coalesce(s.paint,0),coalesce(s.folder,'') FROM notes n LEFT JOIN stationery s ON n.id=s.note WHERE n.id=?",new String[]{key})){
+        try(Cursor c=db.rawQuery("SELECT title,body,day,coalesce(s.paint,0),coalesce(s.folder,''),created FROM notes n LEFT JOIN stationery s ON n.id=s.note WHERE n.id=?",new String[]{key})){
             if(!c.moveToFirst()){library();return;}id=key;day=c.getString(2);layout();root.setFocusableInTouchMode(true);
             LinearLayout b=bar();button(b,"‹ Notes",()->{save();library();});
             b.addView(new View(this),new LinearLayout.LayoutParams(0,1,1));button(b,"Options",this::options);
@@ -184,11 +184,34 @@ public class Notebook extends Activity {
             sheetHeader.addView(text(activeFolder.isEmpty()?"Notebook":activeFolder,13,true));
             title=new EditText(this);title.setSingleLine();title.setHint("Title");title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
             title.setTextSize(29);title.setTextColor(Paper.INK);title.setBackgroundColor(0);title.setText(c.getString(0));sheetHeader.addView(title);
+            dateStamp=text("",14,false);created=c.getLong(5);refreshDate();sheetHeader.addView(dateStamp);
+            hint=button(root,"",()->{});hint.setVisibility(View.GONE);
+            title.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES|InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
             body=new EditText(this);body.setGravity(android.view.Gravity.TOP|android.view.Gravity.START);body.setTextSize(19);body.setBackgroundColor(0x00000000);
             body.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES|InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
             body.setHint("Write a note");body.setText(c.getString(1));root.addView(body,new LinearLayout.LayoutParams(-1,0,1));
-            watch(title,this::schedule);watch(body,this::schedule);
-            accent(button(root,"Writing assistant",this::assistant));
+            watch(title,this::schedule);watch(body,this::typing);
+        }
+    }
+    private TextView dateStamp;
+    private Button hint;
+    private int writingRevision;
+    private long created;
+    private final Runnable autoReview=()->{if(id!=null && hasWindowFocus())writing(true);};
+    private void refreshDate(){
+        java.time.format.DateTimeFormatter format=java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM);
+        String time=android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date(created));
+        dateStamp.setText("Created · "+LocalDate.parse(day).format(format)+"  ·  "+time);
+    }
+    private void typing(){
+        schedule();writingRevision++;hint.setVisibility(View.GONE);handler.removeCallbacks(autoReview);
+        if(getPreferences(0).getBoolean("automatic",false) && !token.isEmpty())handler.postDelayed(autoReview,1800);
+        String original=body.getText().toString();
+        java.util.regex.Matcher repeat=java.util.regex.Pattern.compile("(?iu)\\b(\\p{L}+) +\\1\\b").matcher(original);
+        if(repeat.find()){
+            int start=repeat.start(),end=repeat.end();String word=repeat.group(1);
+            hint.setText("Repeated word · "+word);hint.setVisibility(View.VISIBLE);
+            hint.setOnClickListener(v->{if(original.contentEquals(body.getText()))new AlertDialog.Builder(this).setMessage("Replace “"+original.substring(start,end)+"” with “"+word+"”?").setNegativeButton("Keep",null).setPositiveButton("Replace",(d,i)->{if(original.contentEquals(body.getText()))body.getText().replace(start,end,word);}).show();});
         }
     }
     private void schedule(){handler.removeCallbacks(persist);handler.postDelayed(persist,300);}
@@ -200,9 +223,10 @@ public class Notebook extends Activity {
     interface Choice{void pick(int index);}
     private void choose(String[] names,Choice action){new AlertDialog.Builder(this).setItems(names,(d,i)->action.pick(i)).show();}
     private void options(){
-        choose(new String[]{"Note settings","Share note","Move to recently deleted"},i->{
+        choose(new String[]{"Note settings","Share note","Move to recently deleted","Review writing"},i->{
             save();
             if(i==0){noteSettings();return;}
+            if(i==3){assistant();return;}
             if(i==1){startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,title.getText()+"\n\n"+body.getText()),"Share note"));return;}
             db.execSQL("UPDATE notes SET deleted=1 WHERE id=?",new Object[]{id});library();
         });
@@ -223,32 +247,48 @@ public class Notebook extends Activity {
                 choose(names.toArray(new String[0]),i->{activeFolder=i==0?"":names.get(i);stationery();});
             }
             if(index==2)db.execSQL("UPDATE notes SET pin=1-pin WHERE id=?",new Object[]{id});
-            if(index==3)date(day,d->{day=d;save();});
+            if(index==3)date(day,d->{day=d;refreshDate();save();});
         }).setNegativeButton("Close",null).show();
     }
     private void settings(){
         LinearLayout fields=new LinearLayout(this);fields.setOrientation(LinearLayout.VERTICAL);fields.setPadding(dp(20),0,dp(20),0);
         EditText endpoint=new EditText(this);endpoint.setHint("HTTPS writing service URL");endpoint.setSingleLine();endpoint.setText(getPreferences(0).getString("endpoint",""));fields.addView(endpoint);
         EditText secret=new EditText(this);secret.setHint("Service token (this session)");secret.setSingleLine();secret.setInputType(129);secret.setText(token);fields.addView(secret);
-        new AlertDialog.Builder(this).setTitle("Writing service").setView(fields).setPositiveButton("Save",(d,i)->{getPreferences(0).edit().putString("endpoint",endpoint.getText().toString().trim()).apply();token=secret.getText().toString();}).setNegativeButton("Cancel",null).show();
+        CheckBox auto=new CheckBox(this);auto.setText("Automatically send the edited paragraph to this service and its AI provider for suggestions");auto.setChecked(getPreferences(0).getBoolean("automatic",false));fields.addView(auto);
+        new AlertDialog.Builder(this).setTitle("Writing service").setView(fields).setPositiveButton("Save",(d,i)->{getPreferences(0).edit().putBoolean("automatic",auto.isChecked()).putString("endpoint",endpoint.getText().toString().trim()).apply();token=secret.getText().toString();}).setNegativeButton("Cancel",null).show();
     }
-    private void assistant(){
+    private void assistant(){ writing(false); }
+    private void writing(boolean auto){
         String endpoint=getPreferences(0).getString("endpoint","");
-        if(!endpoint.startsWith("https://") || token.isEmpty()){settings();return;}
+        if(!endpoint.startsWith("https://") || token.isEmpty()){if(!auto)settings();return;}
         String snapshot=body.getText().toString(),key=id;
         int a=Math.max(0,Math.min(body.getSelectionStart(),body.getSelectionEnd())),b=Math.max(body.getSelectionStart(),body.getSelectionEnd());
         int offset=a==b?0:a;String passage=a==b?snapshot:snapshot.substring(a,b);
-        if(passage.trim().isEmpty() || passage.length()>16000){toast("Choose a passage of 1–16,000 characters");return;}
+        if(!auto && (passage.trim().isEmpty() || passage.length()>16000)){toast("Choose a passage of 1–16,000 characters");return;}
+        if(auto){
+            if(!getPreferences(0).getBoolean("automatic",false))return;
+            int caret=Math.max(0,Math.min(body.getSelectionEnd(),snapshot.length()));
+            int start=snapshot.lastIndexOf('\n',Math.max(-1,caret-1))+1;
+            int end=snapshot.indexOf('\n',caret);
+            String paragraph=snapshot.substring(start,end<0?snapshot.length():end);
+            if(paragraph.trim().isEmpty() || paragraph.length()>16000)return;
+            request(endpoint,snapshot,key,start,paragraph,"Improve Writing",true);return;
+        }
         String[] actions={"Proofread Note","Improve Writing","Fix Grammar","Make Clearer","Make Shorter","Make Longer","Make Professional","Make Friendly","Make Natural","Simplify","Rewrite","Fix Punctuation","Summarize"};
         choose(actions,i->new AlertDialog.Builder(this).setTitle("Send for review?").setMessage("Send "+passage.length()+" characters to your writing service and its AI provider?").setNegativeButton("Cancel",null).setPositiveButton("Send",(d,n)->{
-            String bearer=token;toast("Reviewing writing…");
+            request(endpoint,snapshot,key,offset,passage,actions[i],false);
+        }).show());
+    }
+    private void request(String endpoint,String snapshot,String key,int offset,String passage,String action,boolean auto){
+            int revision=writingRevision;
+            String bearer=token;if(!auto)toast("Reviewing writing…");
             new Thread(()->{
                 HttpsURLConnection conn=null;
                 try{
                     conn=(HttpsURLConnection)new URL(endpoint.replaceAll("/+$","")+"/v1/writing").openConnection();
                     conn.setInstanceFollowRedirects(false);conn.setConnectTimeout(10000);conn.setReadTimeout(50000);conn.setRequestMethod("POST");conn.setDoOutput(true);
                     conn.setRequestProperty("Content-Type","application/json");conn.setRequestProperty("Authorization","Bearer "+bearer);
-                    JSONObject data=new JSONObject().put("text",passage).put("language","auto").put("action",actions[i]);
+                    JSONObject data=new JSONObject().put("text",passage).put("language","auto").put("action",action);
                     try(OutputStream out=conn.getOutputStream()){out.write(data.toString().getBytes(StandardCharsets.UTF_8));}
                     StringBuilder buf=new StringBuilder();try(BufferedReader r=new BufferedReader(new InputStreamReader(conn.getInputStream(),StandardCharsets.UTF_8))){String line;while((line=r.readLine())!=null){buf.append(line);if(buf.length()>1000000)throw new IOException();}}
                     JSONArray edits=new JSONObject(buf.toString()).getJSONArray("suggestions");
@@ -260,13 +300,14 @@ public class Notebook extends Activity {
                         if(length<=0 || pos<0 || pos>limit-length || original.length()!=length || !passage.startsWith(original,pos) || passage.indexOf(original)!=passage.lastIndexOf(original))throw new IOException();
                         changed.replace(pos,pos+length,e.getString("replacement"));limit=pos;
                     }
-                    runOnUiThread(()->{if(isDestroyed() || !key.equals(id) || !snapshot.contentEquals(body.getText()))return;
-                        if(edits.length()==0){toast("No changes suggested");return;}
-                        new AlertDialog.Builder(this).setTitle("Review writing").setMessage("Original\n"+passage+"\n\nSuggested\n"+changed).setNegativeButton("Dismiss",null).setPositiveButton("Accept",(dlg,k)->{if(key.equals(id)&&snapshot.contentEquals(body.getText()))body.getText().replace(offset,offset+passage.length(),changed);}).show();});
-                }catch(Exception err){runOnUiThread(()->toast("Writing service unavailable. Check your connection and settings."));}
+                    runOnUiThread(()->{if(isDestroyed() || revision!=writingRevision || !key.equals(id) || !snapshot.contentEquals(body.getText()))return;
+                        if(edits.length()==0){if(!auto)toast("No changes suggested");return;}
+                        Runnable show=()->{
+                        new AlertDialog.Builder(this).setTitle("Review writing").setMessage("Original\n"+passage+"\n\nSuggested\n"+changed).setNegativeButton("Dismiss",null).setPositiveButton("Accept",(dlg,k)->{if(key.equals(id)&&snapshot.contentEquals(body.getText()))body.getText().replace(offset,offset+passage.length(),changed);}).show();};
+                        if(auto){hint.setText("Review suggested wording");hint.setVisibility(View.VISIBLE);hint.setOnClickListener(v->show.run());}else show.run();});
+                }catch(Exception err){if(!auto)runOnUiThread(()->toast("Writing service unavailable. Check your connection and settings."));}
                 finally{if(conn!=null)conn.disconnect();}
             }).start();
-        }).show());
     }
     private void toast(String message){Toast.makeText(this,message,Toast.LENGTH_LONG).show();}
 }

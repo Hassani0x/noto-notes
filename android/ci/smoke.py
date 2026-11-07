@@ -55,6 +55,8 @@ tap("Move to folder")
 tap("Ideas")
 texts=[n.get("text","") for n in screen().iter("node")]
 assert "Change filing date" not in texts and not any(re.fullmatch(r"\d{4}-\d\d-\d\d",t) for t in texts)
+assert any(t.startswith("Created ·") for t in texts)
+assert "Writing assistant" not in texts
 capture("editor")
 tap("‹ Notes")
 tap("＋  New note")
