@@ -18,7 +18,12 @@ final class JourneyTests: XCTestCase {
         let shortcut = app.buttons["10 days ago"]
         if !shortcut.isHittable { app.swipeUp() }
         shortcut.tap()
+        XCTAssertTrue(shortcut.waitForNonExistence(timeout: 5))
         let selectedDay = app.buttons["noteDate"].label
+        let expected = Calendar(identifier: .gregorian).date(byAdding: .day, value: -10, to: .now)!
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        XCTAssertTrue(selectedDay.contains(formatter.string(from: expected)))
         let titleField = app.descendants(matching: .any).matching(identifier: "title").firstMatch
         titleField.tap()
         titleField.typeText(String(title))

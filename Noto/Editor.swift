@@ -60,7 +60,7 @@ struct Editor: View {
             }.padding(.horizontal,16)
         }.background(Color.paper).navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement:.principal) { Button { sheet = .date } label: { Label(Days.label(draft.day),systemImage:"calendar").font(.subheadline) }.accessibilityIdentifier("noteDate") }
+                ToolbarItem(placement:.principal) { Button { sheet = .date } label: { Label(Days.label(draft.day),systemImage:"calendar").labelStyle(.titleAndIcon).font(.subheadline) }.accessibilityIdentifier("noteDate") }
                 ToolbarItem(placement:.topBarTrailing) {
                     Menu {
                         Button("Note information") { sheet = .info }

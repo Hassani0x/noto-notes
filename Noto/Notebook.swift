@@ -89,6 +89,9 @@ extension Color {
 }
 @main struct NotoApp: App {
     @AppStorage("appearance") private var appearance = "System"
+    init() {
+        _ = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+    }
     var body: some Scene {
         WindowGroup {
             Library().tint(.sage)

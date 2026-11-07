@@ -8,14 +8,21 @@ struct DayPicker: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Quick dates") {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], alignment: .leading, spacing: 4) {
+                        ForEach([0,1,2,3,7,10,30], id: \.self) { offset in
+                            Button(offset == 0 ? "Today" : offset == 1 ? "Yesterday" : "\(offset) days ago") {
+                                day = Days.ago(offset)
+                                dismiss()
+                            }
+                            .buttonStyle(.borderless)
+                            .frame(minHeight: 44)
+                        }
+                    }
+                }
                 DatePicker("Note date", selection: Binding(get: { Days.date(day) }, set: { day = Days.key($0) }), in: ...Days.calendar().dateInterval(of: .day, for: .now)!.end.addingTimeInterval(-1), displayedComponents: .date)
                     .datePickerStyle(.graphical)
                 Label(Days.label(day), systemImage: "bookmark.fill").foregroundStyle(Color.sage).accessibilityLabel("Selected day, \(Days.label(day))")
-                Section("Quick dates") {
-                    ForEach([0,1,2,3,7,10,30], id: \.self) { offset in
-                        Button(offset == 0 ? "Today" : offset == 1 ? "Yesterday" : "\(offset) days ago") { day = Days.ago(offset); dismiss() }
-                    }
-                }
             }.navigationTitle("Note date").navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("Done") { dismiss() } }
         }
