@@ -37,7 +37,7 @@ public class Notebook extends Activity {
     @Override public void onPause(){save();super.onPause();}
     @Override public void onBackPressed(){if(id!=null || trash || !filter.isEmpty()){save();trash=false;filter="";library();}else super.onBackPressed();}
     private void layout(){
-        root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(16),dp(12),dp(16),dp(8));
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(16),dp(12),dp(16),dp(8));
         root.setBackgroundColor(0xfffafaf8);setContentView(root);getWindow().setStatusBarColor(0xff526b60);
     }
     private LinearLayout bar(){LinearLayout b=new LinearLayout(this);root.addView(b);return b;}
@@ -71,7 +71,7 @@ public class Notebook extends Activity {
         }
         EditText search=new EditText(this);search.setSingleLine();search.setHint("Search notes");search.setText(query);root.addView(search);
         if(!filter.isEmpty())button(root,filter+"  ×",()->{filter="";library();});
-        ScrollView scroll=new ScrollView(this);root.addView(scroll);rows=new LinearLayout(this);rows.setOrientation(1);scroll.addView(rows);
+        ScrollView scroll=new ScrollView(this);root.addView(scroll);rows=new LinearLayout(this);rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);
         watch(search,()->{query=search.getText().toString();list();});list();
     }
     private void list(){
@@ -122,7 +122,7 @@ public class Notebook extends Activity {
         if(i==2)db.execSQL("UPDATE notes SET deleted=1 WHERE id=?",new Object[]{id});library();
     });}
     private void settings(){
-        LinearLayout fields=new LinearLayout(this);fields.setOrientation(1);fields.setPadding(dp(20),0,dp(20),0);
+        LinearLayout fields=new LinearLayout(this);fields.setOrientation(LinearLayout.VERTICAL);fields.setPadding(dp(20),0,dp(20),0);
         EditText endpoint=new EditText(this);endpoint.setHint("HTTPS writing service URL");endpoint.setSingleLine();endpoint.setText(getPreferences(0).getString("endpoint",""));fields.addView(endpoint);
         EditText secret=new EditText(this);secret.setHint("Service token (this session)");secret.setSingleLine();secret.setInputType(129);secret.setText(token);fields.addView(secret);
         new AlertDialog.Builder(this).setTitle("Writing service").setView(fields).setPositiveButton("Save",(d,i)->{getPreferences(0).edit().putString("endpoint",endpoint.getText().toString().trim()).apply();token=secret.getText().toString();}).setNegativeButton("Cancel",null).show();
