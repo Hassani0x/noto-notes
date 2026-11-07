@@ -161,7 +161,7 @@ public class Notebook extends Activity {
                 card.setOnClickListener(v->{if(trash)new AlertDialog.Builder(this).setMessage("Restore this note?").setNegativeButton("Cancel",null).setPositiveButton("Restore",(d,i)->{db.execSQL("UPDATE notes SET deleted=0 WHERE id=?",new Object[]{key});list();}).show();else edit(key);});
                 index++;
             }
-            if(columns==2 && index%2==1){space(pair,10);pair.addView(new View(this),flex());}
+            if(columns==2 && index%2==1){space(pair,10);pair.addView(new View(this),new LinearLayout.LayoutParams(0,1,1));}
             if(index==0){
                 LinearLayout empty=column();empty.setGravity(android.view.Gravity.CENTER);pad(empty,16,24);empty.setBackground(Paper.shape(0xfff2edf7,dp(22)));rows.addView(empty);
                 empty.addView(new Paper.Illustration(this,false,3),dp(90),dp(72));
@@ -178,7 +178,7 @@ public class Notebook extends Activity {
         try(Cursor c=db.rawQuery("SELECT title,body,day,coalesce(s.paint,0),coalesce(s.folder,'') FROM notes n LEFT JOIN stationery s ON n.id=s.note WHERE n.id=?",new String[]{key})){
             if(!c.moveToFirst()){library();return;}id=key;day=c.getString(2);layout();root.setFocusableInTouchMode(true);
             LinearLayout b=bar();button(b,"‹ Notes",()->{save();library();});
-            b.addView(new View(this),flex());button(b,"Options",this::options);
+            b.addView(new View(this),new LinearLayout.LayoutParams(0,1,1));button(b,"Options",this::options);
             color=c.getInt(3);activeFolder=c.getString(4);sheetHeader=column();pad(sheetHeader,18,16);
             sheetHeader.setBackground(Paper.shape(Paper.PAINT[color],dp(20)));root.addView(sheetHeader);
             sheetHeader.addView(text(activeFolder.isEmpty()?"Notebook":activeFolder,13,true));
