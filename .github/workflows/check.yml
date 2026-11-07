@@ -1,0 +1,36 @@
+name: Check Noto Notes
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: docker build -t noto-writing .
+  iphone:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select simulator and test
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in sorted(d.items(),reverse=True) if "iOS" in k for x in v if "iPhone" in x["name"]))')
+          node ci/fixture.mjs &
+          xcodebuild test -project NotoNotes.xcodeproj -scheme NotoNotes -destination "id=$DEVICE" -parallel-testing-enabled NO -resultBundlePath NotoTests.xcresult CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-test-results
+          path: NotoTests.xcresult
