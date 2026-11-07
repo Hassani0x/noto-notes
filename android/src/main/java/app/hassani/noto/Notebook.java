@@ -182,7 +182,7 @@ public class Notebook extends Activity {
             color=c.getInt(3);activeFolder=c.getString(4);sheetHeader=column();pad(sheetHeader,18,16);
             sheetHeader.setBackground(Paper.shape(Paper.PAINT[color],dp(20)));root.addView(sheetHeader);
             sheetHeader.addView(text(activeFolder.isEmpty()?"Notebook":activeFolder,13,true));
-            title=new EditText(this);title.setSingleLine();title.setHint("Title");title.setTypeface(Typeface.create("sans-serif-medium",0));
+            title=new EditText(this);title.setSingleLine();title.setHint("Title");title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
             title.setTextSize(29);title.setTextColor(Paper.INK);title.setBackgroundColor(0);title.setText(c.getString(0));sheetHeader.addView(title);
             body=new EditText(this);body.setGravity(android.view.Gravity.TOP|android.view.Gravity.START);body.setTextSize(19);body.setBackgroundColor(0x00000000);
             body.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES|InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
