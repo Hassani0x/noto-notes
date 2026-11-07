@@ -12,14 +12,22 @@ final class JourneyTests: XCTestCase {
         if !shortcut.isHittable { app.swipeUp() }
         shortcut.tap()
         let selectedDay = app.buttons["noteDate"].label
-        app.textFields["title"].tap()
-        app.textFields["title"].typeText(String(title))
+        let titleField = app.descendants(matching: .any).matching(identifier: "title").firstMatch
+        titleField.tap()
+        titleField.typeText(String(title))
         app.textViews["body"].tap()
         app.textViews["body"].typeText("Yesterday I goes home.")
+        app.buttons["Hide keyboard"].tap()
         app.buttons["Writing assistant"].tap()
         app.buttons["Proofread Note"].tap()
         XCTAssertTrue(app.buttons["Accept"].waitForExistence(timeout:20))
         app.buttons["Accept"].tap()
+        XCTAssertEqual(app.textViews["body"].value as? String,"Yesterday I went home.")
+        app.buttons["Formatting"].tap()
+        app.buttons["Undo"].tap()
+        XCTAssertEqual(app.textViews["body"].value as? String,"Yesterday I goes home.")
+        app.buttons["Formatting"].tap()
+        app.buttons["Redo"].tap()
         XCTAssertEqual(app.textViews["body"].value as? String,"Yesterday I went home.")
         func created() -> String {
             app.buttons["Note options"].tap()
@@ -33,7 +41,7 @@ final class JourneyTests: XCTestCase {
         let stamp = created()
         app.terminate()
         app.launch()
-        let entry = app.buttons.containing(.staticText,identifier:String(title)).firstMatch
+        let entry = app.descendants(matching: .any).matching(identifier: "entry-" + String(title)).firstMatch
         XCTAssertTrue(entry.waitForExistence(timeout:5))
         entry.tap()
         XCTAssertEqual(app.buttons["noteDate"].label,selectedDay)
@@ -43,7 +51,10 @@ final class JourneyTests: XCTestCase {
         app.buttons["Timeline"].tap()
         XCTAssertTrue(entry.exists)
         app.buttons["Calendar"].tap()
-        XCTAssertTrue(app.navigationBars["Calendar"].exists)
+        app.buttons["calendarDay"].tap()
+        if !shortcut.isHittable { app.swipeUp() }
+        shortcut.tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
     }
     @MainActor func testLargeTypeDarkEditor() {
         let app = XCUIApplication()

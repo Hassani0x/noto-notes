@@ -42,6 +42,22 @@ final class NotebookTests: XCTestCase {
         XCTAssertThrowsError(try r.ranges(in:s,note:UUID(),revision:2))
         XCTAssertThrowsError(try r.ranges(in:"changed",note:id,revision:2))
     }
+    func testUnsafeOrRepeatedSuggestionsAreRejected() {
+        let note = UUID()
+        for (source,start,length) in [("aaa",0,2),("🙂",1,1),("a",Int.max,1)] {
+            let edit = Suggestion(id:UUID(),original:"aa",replacement:"b",category:"grammar",explanation:"test",start:start,length:length)
+            let r = Review(noteID:note,version:1,passage:NSRange(location:0,length:source.utf16.count),source:source,edits:[edit])
+            XCTAssertThrowsError(try r.ranges(in:source,note:note,revision:1))
+        }
+    }
+    @MainActor func testFailedSaveDraftRecovery() throws {
+        let note = Note(title:"Before")
+        let draft = Draft(title:"Recovered",body:"متن",day:Days.ago(7))
+        let url = try Draft.url(note.id)
+        defer { try? FileManager.default.removeItem(at:url) }
+        try JSONEncoder().encode(draft).write(to:url,options:.atomic)
+        XCTAssertEqual(Draft.load(note),draft)
+    }
     @MainActor func testPopulatedSearch() {
         let notes = (1...3000).map { Note(title:"Entry \($0)",content:"A line from my notebook") }
         measure { XCTAssertEqual(notes.filter{$0.matches("Entry 3000")}.count,1) }

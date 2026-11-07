@@ -26,7 +26,16 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild -version
-          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in sorted(d.items(),reverse=True) if "iOS" in k for x in v if "iPhone" in x["name"]))')
+          xcodebuild -project NotoNotes.xcodeproj -scheme NotoNotes -showdestinations > "$RUNNER_TEMP/destinations"
+          DEVICE=$(python3 - "$RUNNER_TEMP/destinations" <<'PY'
+          import re, sys
+          lines = [line for line in open(sys.argv[1]) if "platform:iOS Simulator" in line and "name:iPhone" in line]
+          lines.sort(key=lambda line: ("iPhone SE" not in line, "Pro Max" in line))
+          print(re.search(r"id:([0-9A-Fa-f-]{36})", lines[0]).group(1))
+          PY
+          )
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
           node ci/fixture.mjs &
           xcodebuild test -project NotoNotes.xcodeproj -scheme NotoNotes -destination "id=$DEVICE" -parallel-testing-enabled NO -resultBundlePath NotoTests.xcresult CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4

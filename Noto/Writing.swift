@@ -58,8 +58,8 @@ struct Review {
             guard e.start >= end, e.start <= size, e.length > 0, e.length <= size - e.start else { throw WritingError.invalid }
             let range = NSRange(location: e.start, length: e.length)
             guard let slice = Range(range,in: source), String(source[slice]) == e.original,
-                  source.range(of: e.original, options: .literal)?.lowerBound == slice.lowerBound,
-                  source[slice.upperBound...].range(of: e.original, options: .literal) == nil else { throw WritingError.invalid }
+                  (source as NSString).range(of: e.original, options: .literal) == range,
+                  (source as NSString).range(of: e.original, options: [.literal,.backwards]) == range else { throw WritingError.invalid }
             end = NSMaxRange(range)
             return (NSRange(location: passage.location + e.start, length: e.length),e)
         }

@@ -8,7 +8,7 @@ struct DayPicker: View {
     var body: some View {
         NavigationStack {
             Form {
-                DatePicker("Note date", selection: Binding(get: { Days.date(day) }, set: { day = Days.key($0) }), in: ...Days.calendar().startOfDay(for: .now).addingTimeInterval(86399), displayedComponents: .date)
+                DatePicker("Note date", selection: Binding(get: { Days.date(day) }, set: { day = Days.key($0) }), in: ...Days.calendar().dateInterval(of: .day, for: .now)!.end.addingTimeInterval(-1), displayedComponents: .date)
                     .datePickerStyle(.graphical)
                 Label(Days.label(day), systemImage: "bookmark.fill").foregroundStyle(Color.sage).accessibilityLabel("Selected day, \(Days.label(day))")
                 Section("Quick dates") {
@@ -34,6 +34,7 @@ struct Library: View {
     @State private var dateFilter: Int?
     @State private var filterSheet = false
     @State private var settings = false
+    @State private var calendarJump = false
     @State private var error: String?
     @AppStorage("sorting") private var sorting = "Note date"
     @AppStorage("haptics") private var haptics = true
@@ -56,6 +57,7 @@ struct Library: View {
             VStack(spacing: 0) {
                 if page == .calendar {
                     MonthGrid(day: $day, marked: Set(active.map(\.noteDate))).padding(.horizontal)
+                    Button { calendarJump = true } label: { Label(Days.label(day), systemImage: "calendar") }.accessibilityIdentifier("calendarDay")
                 }
                 if page == .notes {
                     list.searchable(text: $search, prompt: "Search notes")
@@ -90,6 +92,7 @@ struct Library: View {
                 .navigationDestination(for: UUID.self) { id in
                     if let note = all.first(where: { $0.id == id }) { Editor(note: note).id(id) }
                 }
+                .sheet(isPresented: $calendarJump) { DayPicker(day: $day) }
                 .sheet(isPresented: $settings) { SettingsView() }
                 .sheet(isPresented: $filterSheet) { DayPicker(day: Binding(get: { dateFilter ?? Days.key() }, set: { dateFilter = $0 })).onAppear { if dateFilter == nil { dateFilter = Days.key() } } }
                 .alert("Couldn’t save changes", isPresented: Binding(get: {error != nil}, set: {if !$0 {error=nil}})) { Button("OK") {} } message: { Text(error ?? "") }
@@ -127,7 +130,7 @@ struct Library: View {
                 if !n.content.isEmpty { Text(n.content).lineLimit(2).foregroundStyle(.secondary) }
                 Text(Days.label(n.noteDate)).font(.caption).foregroundStyle(.secondary)
             }.padding(.vertical, 8)
-        }.listRowBackground(Color.paper)
+        }.accessibilityIdentifier("entry-\(n.title)").listRowBackground(Color.paper)
             .contextMenu {
                 Button(n.isPinned ? "Unpin" : "Pin") { n.isPinned.toggle(); save() }
                 Button("Duplicate") { create(copy: n) }

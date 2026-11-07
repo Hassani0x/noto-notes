@@ -1,1 +1,13 @@
-{"compilerOptions":{"types":["node"],"strict":true,"target":"ES2023","module":"NodeNext","moduleResolution":"NodeNext","allowImportingTsExtensions":true,"noEmit":true,"skipLibCheck":true},"include":["src","test"]}
+{
+  "compilerOptions": {
+    "types": ["node"],
+    "strict": true,
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "test"]
+}
