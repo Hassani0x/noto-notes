@@ -1,0 +1,28 @@
+name: Publish iPhone package
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and publish device IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild build -project NotoNotes.xcodeproj -scheme NotoNotes -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/release" CODE_SIGNING_ALLOWED=NO
+          mkdir -p "$RUNNER_TEMP/package/Payload"
+          cp -R "$RUNNER_TEMP/release/Build/Products/Release-iphoneos/NotoNotes.app" "$RUNNER_TEMP/package/Payload/"
+          cd "$RUNNER_TEMP/package"
+          app=Payload/NotoNotes.app
+          test "$(plutil -extract DTPlatformName raw "$app/Info.plist")" = iphoneos
+          test -x "$app/NotoNotes"
+          zip -qry NotoNotes-unsigned.ipa Payload
+          unzip -tq NotoNotes-unsigned.ipa
+          shasum -a 256 NotoNotes-unsigned.ipa > SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Noto Notes $GITHUB_REF_NAME for iPhone" --notes-file "$GITHUB_WORKSPACE/RELEASE.md" NotoNotes-unsigned.ipa SHA256SUMS.txt

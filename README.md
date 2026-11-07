@@ -2,6 +2,10 @@
 
 A native iPhone notebook for filing entries under the day they belong to. Notes, search, calendar browsing, editing, and native spelling work locally. Cloud proofreading and rewriting require a configured service and explicit consent.
 
+## Download for iPhone
+
+[Get the latest iPhone package and installation instructions](https://github.com/Hassani0x/noto-notes/releases/latest). The IPA requires device signing.
+
 ## Run the iPhone app
 
 Open `NotoNotes.xcodeproj` in Xcode 16 or newer on macOS. Select the shared NotoNotes scheme and an iPhone simulator running iOS 17 or newer, then Run. For a physical iPhone, select your signing team and an available bundle identifier in Signing & Capabilities. The editor supports system spelling dictionaries, plain text, and Markdown heading and list prefixes.
