@@ -207,13 +207,30 @@ public class Notebook extends Activity {
         schedule();writingRevision++;hint.setVisibility(View.GONE);handler.removeCallbacks(autoReview);
         if(getPreferences(0).getBoolean("automatic",false) && !token.isEmpty())handler.postDelayed(autoReview,1800);
         String original=body.getText().toString();
-        java.util.regex.Matcher repeat=java.util.regex.Pattern.compile("(?iu)\\b(\\p{L}+) +\\1\\b").matcher(original);
-        if(repeat.find()){
-            int start=repeat.start(),end=repeat.end();String word=repeat.group(1);
-            hint.setText("Repeated word · "+word);hint.setVisibility(View.VISIBLE);
-            hint.setOnClickListener(v->{if(original.contentEquals(body.getText()))new AlertDialog.Builder(this).setMessage("Replace “"+original.substring(start,end)+"” with “"+word+"”?").setNegativeButton("Keep",null).setPositiveButton("Replace",(d,i)->{if(original.contentEquals(body.getText()))body.getText().replace(start,end,word);}).show();});
+        java.util.regex.Matcher match=LOCAL_ISSUES.matcher(original);
+        if(!match.find())return;
+        int start=match.start(),end=match.end();
+        String source=match.group(),replacement;
+        if(match.group(1)!=null)replacement=match.group(1);
+        else switch(source.toLowerCase(java.util.Locale.ROOT)){
+            case "teh": replacement="the";break;
+            case "recieve": replacement="receive";break;
+            case "alot": replacement="a lot";break;
+            case "could of": replacement="could have";break;
+            case "i goes": replacement="I go";break;
+            default: return;
         }
+        if(Character.isUpperCase(source.charAt(0)))replacement=Character.toUpperCase(replacement.charAt(0))+replacement.substring(1);
+        final String suggestion=replacement;
+        hint.setText("Suggestion · "+suggestion);hint.setVisibility(View.VISIBLE);
+        hint.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Writing suggestion")
+            .setMessage("Replace “"+source+"” with “"+suggestion+"”?")
+            .setNegativeButton("Keep",null).setPositiveButton("Replace",(d,i)->{
+                if(original.contentEquals(body.getText()))body.getText().replace(start,end,suggestion);
+            }).show());
     }
+    private static final java.util.regex.Pattern LOCAL_ISSUES=java.util.regex.Pattern.compile(
+        "(?iu)\\b(?:(\\p{L}+) +\\1|teh|recieve|alot|could of|i goes)\\b");
     private void schedule(){handler.removeCallbacks(persist);handler.postDelayed(persist,300);}
     private void save(){
         if(id==null || title==null || body==null)return;
