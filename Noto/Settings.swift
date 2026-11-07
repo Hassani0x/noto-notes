@@ -3,7 +3,8 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct NotebookExport: FileDocument {
-    static let readableContentTypes: [UTType] = [.plainText]
+    static let markdown = UTType(filenameExtension: "md", conformingTo: .plainText) ?? .plainText
+    static let readableContentTypes: [UTType] = [markdown]
     var text: String
     init(_ text: String) { self.text = text }
     init(configuration: ReadConfiguration) throws { text = String(decoding: configuration.file.regularFileContents ?? Data(), as: UTF8.self) }
@@ -73,7 +74,7 @@ struct SettingsView: View {
                     Button("Allow") { cloud = true }
                     Button("Cancel",role:.cancel) {}
                 } message: { Text("Selected passages go to your configured server and its AI provider. Whole-note actions send the current note body. Automatic proofreading sends the edited paragraph after you pause.") }
-                .fileExporter(isPresented:$export,document:NotebookExport(notes.filter{$0.deletedAt == nil}.map(\.markdown).joined(separator:"\n\n---\n\n")),contentType:.plainText,defaultFilename:"Noto Notes.md") { result in
+                .fileExporter(isPresented:$export,document:NotebookExport(notes.filter{$0.deletedAt == nil}.map(\.markdown).joined(separator:"\n\n---\n\n")),contentType:NotebookExport.markdown,defaultFilename:"Noto Notes") { result in
                     if case .failure(let e) = result {status = e.localizedDescription}
                 }
         }

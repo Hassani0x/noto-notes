@@ -1,6 +1,13 @@
 import XCTest
 
 final class JourneyTests: XCTestCase {
+    @MainActor private func capture(_ name: String, app: XCUIApplication) {
+        let image = XCTAttachment(screenshot: app.screenshot())
+        image.name = name
+        image.lifetime = .keepAlways
+        add(image)
+    }
+
     @MainActor func testPastDatedProofreadingSurvivesRelaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-noto-fixture","-cloud","YES","-spell","NO"]
@@ -21,6 +28,7 @@ final class JourneyTests: XCTestCase {
         app.buttons["Writing assistant"].tap()
         app.buttons["Proofread Note"].tap()
         XCTAssertTrue(app.buttons["Accept"].waitForExistence(timeout:20))
+        capture("Review on iPhone", app: app)
         app.buttons["Accept"].tap()
         XCTAssertEqual(app.textViews["body"].value as? String,"Yesterday I went home.")
         app.buttons["Formatting"].tap()
@@ -50,11 +58,13 @@ final class JourneyTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy:0).tap()
         app.buttons["Timeline"].tap()
         XCTAssertTrue(entry.exists)
+        capture("Timeline", app: app)
         app.buttons["Calendar"].tap()
         app.buttons["calendarDay"].tap()
         if !shortcut.isHittable { app.swipeUp() }
         shortcut.tap()
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        capture("Calendar", app: app)
     }
     @MainActor func testLargeTypeDarkEditor() {
         let app = XCUIApplication()
