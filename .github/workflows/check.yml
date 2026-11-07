@@ -27,6 +27,8 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
           xcodebuild -version
           xcodebuild build-for-testing -project NotoNotes.xcodeproj -scheme NotoNotes -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/NotoBuild" CODE_SIGNING_ALLOWED=NO
+      - name: Compile the release app for iPhone
+        run: xcodebuild build -project NotoNotes.xcodeproj -scheme NotoNotes -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/NotoRelease" CODE_SIGNING_ALLOWED=NO
       - name: Select simulator and test
         run: |
           set -euo pipefail

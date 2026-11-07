@@ -32,6 +32,11 @@ final class JourneyTests: XCTestCase {
         app.buttons["Hide keyboard"].tap()
         app.buttons["Writing assistant"].tap()
         app.buttons["Proofread Note"].tap()
+        XCTAssertTrue(app.buttons["Dismiss"].waitForExistence(timeout:20))
+        app.buttons["Dismiss"].tap()
+        XCTAssertEqual(app.textViews["body"].value as? String,"Yesterday I goes home.")
+        app.buttons["Writing assistant"].tap()
+        app.buttons["Proofread Note"].tap()
         XCTAssertTrue(app.buttons["Accept"].waitForExistence(timeout:20))
         capture("Review on iPhone", app: app)
         app.buttons["Accept"].tap()
@@ -77,6 +82,8 @@ final class JourneyTests: XCTestCase {
         app.launch()
         app.buttons["New note"].tap()
         XCTAssertTrue(app.textViews["body"].isHittable)
+        XCTAssertTrue(app.buttons["Writing assistant"].isHittable)
+        _ = app.buttons["New note"].waitForNonExistence(timeout: 2)
         let shot = XCTAttachment(screenshot:app.screenshot())
         shot.name = "Large type dark editor"
         shot.lifetime = .keepAlways

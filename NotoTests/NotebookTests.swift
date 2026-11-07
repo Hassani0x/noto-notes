@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import UIKit
 @testable import NotoNotes
 
 final class NotebookTests: XCTestCase {
@@ -58,6 +59,23 @@ final class NotebookTests: XCTestCase {
         try JSONEncoder().encode(draft).write(to:url,options:.atomic)
         XCTAssertEqual(Draft.load(note),draft)
     }
+    @MainActor func testNativeSpellingAndMixedDirectionSelection() {
+        let view = UITextView()
+        let text = "جلسه with Sam — سبا"
+        view.text = text
+        view.textAlignment = .natural
+        BodyEditor.configureSpelling(view, enabled:true)
+        XCTAssertEqual(view.spellCheckingType,.yes)
+        XCTAssertEqual(view.autocorrectionType,.yes)
+        let bridge = TextBridge()
+        bridge.view = view
+        bridge.replace((text as NSString).range(of:"Sam"),with:"لیلا")
+        XCTAssertEqual(view.text,"جلسه with لیلا — سبا")
+        XCTAssertEqual(view.textAlignment,.natural)
+        BodyEditor.configureSpelling(view, enabled:false)
+        XCTAssertEqual(view.spellCheckingType,.no)
+    }
+
     @MainActor func testPopulatedSearch() {
         let notes = (1...3000).map { Note(title:"Entry \($0)",content:"A line from my notebook") }
         measure { XCTAssertEqual(notes.filter{$0.matches("Entry 3000")}.count,1) }

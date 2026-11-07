@@ -43,8 +43,7 @@ struct BodyEditor: UIViewRepresentable {
     func updateUIView(_ v: UITextView, context: Context) {
         context.coordinator.parent = self
         if v.text != text && v.markedTextRange == nil { v.text = text }
-        v.spellCheckingType = spell ? .yes : .no
-        v.autocorrectionType = spell ? .yes : .no
+        Self.configureSpelling(v, enabled: spell)
         if context.coordinator.decorations != highlights {
             v.textStorage.removeAttribute(.backgroundColor, range: NSRange(location:0,length:v.text.utf16.count))
             for range in highlights where NSMaxRange(range) <= v.text.utf16.count {
@@ -53,6 +52,11 @@ struct BodyEditor: UIViewRepresentable {
             context.coordinator.decorations = highlights
         }
     }
+    static func configureSpelling(_ view: UITextView, enabled: Bool) {
+        view.spellCheckingType = enabled ? .yes : .no
+        view.autocorrectionType = enabled ? .yes : .no
+    }
+
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: BodyEditor
         var decorations = [NSRange]()
