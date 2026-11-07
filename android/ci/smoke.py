@@ -14,12 +14,18 @@ def screen():
 
 def tap(label):
     for attempt in range(3):
-        for item in screen().iter("node"):
-            if label.casefold() in ((item.get("text") or "").casefold(), (item.get("content-desc") or "").casefold()):
+        tree = screen()
+        editors = [n for n in tree.iter("node") if n.get("class") == "android.widget.EditText"]
+        field = ({"Title": 0, "Write a note": 1}).get(label)
+        for item in tree.iter("node"):
+            if (field is not None and field < len(editors) and item is editors[field]) or label.casefold() in ((item.get("text") or "").casefold(), (item.get("content-desc") or "").casefold()):
                 x, y, right, bottom = map(int, re.findall(r"\d+", item.get("bounds")))
                 adb("shell", "input", "tap", str((x+right)//2), str((y+bottom)//2))
                 return
         time.sleep(1)
+    capture("failed")
+    print(ET.tostring(tree, encoding="unicode"))
+    print(adb("logcat", "-b", "crash", "-d")[-3500:])
     raise AssertionError("Missing control: " + label)
 
 def capture(name):
